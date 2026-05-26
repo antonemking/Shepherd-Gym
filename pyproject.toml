@@ -1,0 +1,30 @@
+[project]
+name = "shepherd-gym"
+version = "0.1.0"
+description = "A low-stress herding RL environment — watch agents learn to muster a flock while keeping it calm. Sibling experiment to SamSeesSheep."
+requires-python = ">=3.11,<3.13"
+license = "MIT"
+dependencies = [
+    # numpy<2 to match the sheep-seg / torch pin in the wider repo set
+    "numpy>=1.26,<2",
+    "pillow>=10.0",
+    "opencv-python-headless>=4.9",
+]
+
+[project.optional-dependencies]
+# Phase 2: training stack. `uv sync --extra train` (or pip install .[train]).
+train = [
+    "torch>=2.5,<2.6",
+    "gymnasium>=0.29",
+    # pufferlib is the target; cleanrl-style single-file PPO is the fallback if
+    # puffer's wheels are awkward on 3.12.
+    "pufferlib>=2.0",
+    "tensorboard>=2.16",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["shepherd_gym"]
