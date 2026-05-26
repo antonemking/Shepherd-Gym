@@ -1,65 +1,120 @@
 # shepherd-gym 🐕🐑
 
-**A low-stress herding RL environment.** A dog (the agent) musters a flock of
-boid-sheep into a fold. Each sheep carries an **arousal** signal in `[0,1]` that
-rises under dog pressure, crowding, and high-speed flight — a deliberate echo of
-the **ear-angle stress signal** measured in [SamSeesSheep](../../lorewood-advisors/sheep-seg).
-The reward trades penning the flock *fast* against keeping it *calm*, so a trained
-policy can be studied along a **speed-vs-stress frontier**.
+*A working notebook. I'm figuring this out as I go — the thesis is firm, the model
+is evolving, and the honest edges are marked as such.*
 
-> Sibling experiment to the SamSeesSheep welfare-CV series: *from measuring sheep
-> stress in real video → simulating it → optimising a herding policy against it.*
+A reinforcement-learning environment where a dog learns to herd a flock into a fold
+**while keeping the flock calm**. It's the control-side sibling of
+[SamSeesSheep][sss] — the project where I measure sheep stress from video (ear angle).
 
-Pure-numpy core, Gymnasium-compatible, PufferLib-ready. The renderer is built for
-the same comparison-visual grammar as the SamSeesSheep loops (ghost trails,
-model-vs-model overlays, swarm-of-attempts, reward/stress curves).
+---
+
+## Where this came from
+
+SamSeesSheep answers a *measurement* question: **how stressed is this sheep, right
+now?** — by segmenting every sheep's head/ears/nose and reading ear angle, a posture
+that the affective-state literature ties to arousal ([Reefmann 2009][reef],
+[Boissy 2011][boissy]).
+
+Once you can *measure* stress, a different question won't leave you alone: a flock can
+be penned a hundred different ways, and they are not equally kind. The frantic,
+zig-zagging gather and the patient, wide arc both end with sheep in the fold — but one
+of them spikes every animal's arousal and the other barely registers. So:
+
+> **If I can measure flock stress, can I *optimise against it* — and will a learning
+> agent discover handling that's gentler than naïve driving, without failing the job?**
+
+That's the thesis. shepherd-gym is the testbed for it.
+
+## The thesis, stated plainly
+
+1. For any herding goal, many policies succeed; they differ enormously in welfare cost.
+2. That cost is *measurable* (ear-angle arousal, via SamSeesSheep).
+3. Therefore it's *optimisable* — and RL should find policies on a better
+   **speed-vs-stress frontier** than heuristics.
+4. The simulated stress model can be made progressively *empirical* by feeding it real
+   recordings (see the [data roadmap](docs/data-roadmap.md)).
+
+## What it is right now
+
+- A pure-numpy, Gymnasium-compatible, PufferLib-ready env (`Shepherd-v0`).
+- A **flight-zone arousal model**: each sheep's latent stress rises inside its flight
+  zone, more when the dog is *closing fast*, and when it's *isolated* from flockmates;
+  it recovers slowly. Grounded in flight-zone/FID + gregariousness work.
+- An **asymmetric actor–critic** setup: the policy only sees what's sensable —
+  positions, velocities, flock geometry, and a **noisy ear-angle observable** (the sim
+  analogue of SamSeesSheep's output) — while the critic gets the true latent arousal,
+  and the reward is the true integrated stress. *(Mirrors deployment: at run time you
+  only have the noisy CV estimate; ground truth is a training-only crutch.)*
+- Scripted baselines (random / greedy / a [Strömbom][strom]-style flank shepherd) and a
+  content renderer (ghost trails, swarm-of-attempts overlays, model-vs-model panels) in
+  the [SamSeesSheep][sss] visual grammar. → full mechanism in [`docs/welfare-model.md`](docs/welfare-model.md).
+
+## What's real, and what I'm still guessing
+
+I'd rather be honest than oversell:
+
+- ✅ The **framing** (measure → optimise) and the **asymmetric setup** are sound.
+- ✅ The **locomotion** has empirical roots — [Strömbom et al. 2014][strom] fit
+  shepherding heuristics to GPS tracks of a real dog and flock.
+- ⚠️ The **arousal parameters are theory-grounded, not yet fit to my data** — so this
+  is a *methods demonstration*, not a claim about real Katahdins. Yet.
+- ⚠️ I'm modelling **arousal/fear** (the axis ear posture indexes), **not pain** — the
+  [Sheep Pain Facial Expression Scale][mcl] is a related but distinct construct.
+
+Making it empirical is the whole roadmap below.
 
 ## Run it (no training stack needed)
 
-Only needs `numpy`, `pillow`, `opencv-python-headless` (already in your env):
+Needs only `numpy`, `pillow`, `opencv-python-headless`:
 
 ```bash
-python scripts/demo.py 40        # benchmark scripted baselines + emit visuals
+python scripts/demo.py 40     # benchmark the baselines + write visuals to out/
 ```
 
-Outputs to `out/`:
-- `benchmark.md` — metrics table (success%, steps, penned/N, return, **arousal/welfare**)
-- `<policy>.gif` / `.mp4` — single episodes with ghost trails, sheep tinted by stress
-- `compare_random_greedy_flank.mp4` — side-by-side on a shared seed (the v0.2-vs-v0.4 grammar)
-- `swarm_<policy>.png` — 40 runs ghosted on one frame (green=penned, red=failed)
-
-## The environment — `Shepherd-v0`
-
-- **Agent:** the dog. **Action:** continuous desired velocity `(vx, vy) ∈ [-1,1]²`.
-- **Flock:** Reynolds boids (separation/alignment/cohesion) + flee-from-dog + soft bounds.
-- **Arousal:** per-sheep stress; ↑ with dog proximity × dog speed and own flight speed,
-  ↓ when calm; penned sheep calm fastest. Rendered as sheep colour (white→red).
-- **Observation:** dog state, flock centroid/spread/mean-arousal/penned-fraction,
-  fold-relative vectors, and the K nearest free sheep (rel pos/vel + arousal).
-- **Reward:** `+penned`, `+progress-to-fold`, `−spread`, **`−mean_arousal`** (welfare),
-  `−time`, big bonus on full pen. Weights live in `ShepherdConfig` — turn `r_arousal`
-  up/down to sweep the gentle-vs-fast trade-off.
+Early result (40 held-out seeds, 8 sheep): the flank shepherd pens **80%** but drives
+mean arousal to **~0.49** — exactly the gap a gentler learned policy should close.
 
 ## Roadmap
 
-- **P1 (done):** env + scripted baselines (random / greedy / Strömbom-style flank) +
-  content renderer + benchmark harness. *Runs on numpy alone.*
-- **P2:** `uv sync --extra train`; PPO (PufferLib, or CleanRL single-file fallback);
-  training-curve + **checkpoint-ghosting** visuals (step-1k vs 10k vs 100k racing the
-  same seed); trained agent added to the benchmark.
-- **P3:** predators (wolves) — the dog must herd *and* screen them off; and the
-  **speed-vs-stress Pareto study** (sweep `r_arousal`).
-- **P4:** small-LLM-as-shepherd — can a tiny LM act as the policy from text-framed obs?
-- **P5 (stretch):** calibrate the flock model against real YOLO-pose trajectories from
-  SamSeesSheep barn video (behavioural digital twin); optional 3D render.
+**Make the model empirical** — the calibration ladder, gated on footage:
+[`docs/data-roadmap.md`](docs/data-roadmap.md). Rungs: ear-angle observable → flock
+locomotion → (the digital-twin moment) dog→stress dynamics from co-recorded clips →
+proxy validation in welfare units.
 
-## Layout
+**Train & show the learning** —
+- **P2:** PPO with an asymmetric critic (consumes `info["privileged_state"]`); training
+  curves + checkpoint-ghosting footage (step-1k vs 10k vs 100k racing one seed).
+- **P3:** predators (wolves) — herd *and* screen them off.
+- **P4:** a small LLM as the policy — can a language model learn to herd from text obs?
 
-```
-shepherd_gym/
-  env.py         # Shepherd-v0 (numpy, gym-compatible)
-  baselines.py   # random / greedy / flank scripted policies
-  render.py      # ghost trails, swarm overlay, compare panel; gif/webp/mp4
-  benchmark.py   # eval over held-out seeds -> table + artifacts
-scripts/demo.py  # one-command benchmark + visuals
-```
+## Sources & kin
+
+- [SamSeesSheep][sss] — the measurement sibling (ear-angle welfare CV). *The reason this exists.*
+- [Reefmann, Wechsler & Gygax 2009][reef] — ear postures ↔ emotional valence/arousal in sheep.
+- [Boissy et al. 2011][boissy] — ear postures and emotional states.
+- [McLennan & Mahmoud 2019][mcl] — Sheep Pain Facial Expression Scale (the *pain* construct, for contrast).
+- [Strömbom et al. 2014][strom] — shepherding heuristics fit to real GPS data (the locomotion model).
+- [Temple Grandin — flight zone & handling][grandin] — the basis of the arousal model.
+- [PufferLib][puffer] — the fast-RL target this env is built to plug into.
+
+*(Citations recalled from memory and cross-checked against the SamSeesSheep refs —
+worth a final verify before they go in a paper.)*
+
+## Docs
+
+`docs/welfare-model.md` (the science) · `docs/data-roadmap.md` (heuristic→empirical
+ladder) · `docs/design-system.md` + `docs/design-brief.md` (the visual identity).
+
+---
+
+*This README will keep changing as the model earns its grounding. If a claim here
+sounds confident, check whether the matching rung in the data roadmap is actually ticked.*
+
+[sss]: https://github.com/antonemking/sheep-seg "TODO: confirm the SamSeesSheep repo URL/visibility"
+[reef]: https://www.sciencedirect.com/science/article/pii/S0168159109001610
+[boissy]: https://www.sciencedirect.com/science/article/pii/S0031938411000369
+[mcl]: https://pmc.ncbi.nlm.nih.gov/articles/PMC6523241/
+[strom]: https://royalsocietypublishing.org/doi/10.1098/rsif.2014.0719 "TODO: verify DOI"
+[grandin]: https://www.grandin.com/behaviour/principles/flight.zone.html "TODO: verify link"
+[puffer]: https://github.com/PufferAI/PufferLib
