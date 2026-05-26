@@ -98,8 +98,8 @@ proxy validation in welfare units.
 - [Temple Grandin — flight zone & handling][grandin] — the basis of the arousal model.
 - [PufferLib][puffer] — the fast-RL target this env is built to plug into.
 
-*(Citations recalled from memory and cross-checked against the SamSeesSheep refs —
-worth a final verify before they go in a paper.)*
+*(Locomotion + handling links verified; the sheep-affect clinical refs are carried
+over from the SamSeesSheep README — give those a final check before they go in a paper.)*
 
 ## Docs
 
@@ -111,10 +111,10 @@ ladder) · `docs/design-system.md` + `docs/design-brief.md` (the visual identity
 *This README will keep changing as the model earns its grounding. If a claim here
 sounds confident, check whether the matching rung in the data roadmap is actually ticked.*
 
-[sss]: https://github.com/antonemking/sheep-seg "TODO: confirm the SamSeesSheep repo URL/visibility"
+[sss]: https://github.com/antonemking/SamSeesSheep
 [reef]: https://www.sciencedirect.com/science/article/pii/S0168159109001610
 [boissy]: https://www.sciencedirect.com/science/article/pii/S0031938411000369
 [mcl]: https://pmc.ncbi.nlm.nih.gov/articles/PMC6523241/
-[strom]: https://royalsocietypublishing.org/doi/10.1098/rsif.2014.0719 "TODO: verify DOI"
-[grandin]: https://www.grandin.com/behaviour/principles/flight.zone.html "TODO: verify link"
+[strom]: https://royalsocietypublishing.org/doi/10.1098/rsif.2014.0719
+[grandin]: https://www.grandin.com/behaviour/principles/flight.zone.html
 [puffer]: https://github.com/PufferAI/PufferLib
