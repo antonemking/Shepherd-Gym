@@ -13,11 +13,20 @@ Flight-zone arousal model + Strömbom-rooted locomotion, parameters from publish
 flight-zone/FID, gregariousness, and handling work. **Claim:** "a methods demo on a
 plausible, literature-grounded stress model." (See `welfare-model.md`.)
 
-## Rung 1 — ear-angle observable `[~]`
-- **Data:** existing flock clips → SamSeesSheep ear-angle time series.
-- **Fits:** measurement noise `ear_noise_deg` (you already have σ≈4° on v0.4), and the
-  calm↔aroused ear-angle **range** (the `ear_neutral_deg` / `ear_aroused_deg` endpoints).
-- **Needs:** a few calm clips and a few clearly-aroused clips to anchor the endpoints.
+## Rung 1 — ear-angle observable `[~ partial]`
+- **Done:** `ear_noise_deg = 4°` is now justified by SamSeesSheep's **v0.4 held-out
+  benchmark** (`docs/v0.4-benchmark.md`), not a guess; endpoints anchored to the **SPFES
+  clinical thresholds** (UP 30° / DOWN -10°) rather than arbitrary.
+- **Tool:** `scripts/calibrate.py` reads `data/labels/*/review.json`, computes ear angle
+  by the SamSeesSheep convention, and patches `ShepherdConfig` — but **guards against bad
+  data** and refuses to write.
+- **Blocked on data:** the available reviewed labels are **insufficient/uncontrolled** for
+  fitting the calm↔aroused endpoints — only ~37 ear measurements over 4 clips, and the
+  clips aren't motionless, so the apparent "jitter" (~60°) is real head movement, not
+  measurement noise. A from-scratch keypoint formula also doesn't reproduce the validated
+  mask-based metric.
+- **To finish:** run the **validated pipeline** (v0.4 weights + `ear_angle.py`) on a handful
+  of **curated motionless clips** that span calm→aroused, then `calibrate.py --apply`.
 - **Unlocks:** "the observable the agent sees is calibrated to my pipeline's real output."
 
 ## Rung 2 — flock locomotion `[~]`

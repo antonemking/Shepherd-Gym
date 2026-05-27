@@ -60,9 +60,12 @@ class ShepherdConfig:
     arousal_decay: float = 0.22    # recovery — slow (asymmetric: stress settles slower than it spikes)
 
     # ---- ear-angle observable (mirrors the SamSeesSheep CV output) ----
-    ear_neutral_deg: float = 25.0  # relaxed ears (calm sheep)
-    ear_aroused_deg: float = -8.0  # ears flatten / go back under arousal (Reefmann/Boissy)
-    ear_noise_deg: float = 4.0     # measurement σ ≈ SamSeesSheep v0.4 held-out jitter
+    # Anchored to SamSeesSheep's SPFES thresholds + v0.4 benchmark. Endpoints are NOT yet
+    # data-fit — that needs the validated pipeline on curated motionless clips (the available
+    # reviewed labels are too few/uncontrolled; see scripts/calibrate.py, docs/data-roadmap.md).
+    ear_neutral_deg: float = 25.0  # calm: ears up/forward (within the NEUTRAL→UP band, UP>30°)
+    ear_aroused_deg: float = -10.0 # aroused: ears back/down (SamSeesSheep clinical DOWN threshold)
+    ear_noise_deg: float = 4.0     # measurement σ — SamSeesSheep v0.4 held-out benchmark (docs/v0.4-benchmark.md)
     ear_norm: float = 35.0         # normaliser for the observation
 
     # ---- reward weights (computed on TRUE latent arousal) ----
