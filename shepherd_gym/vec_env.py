@@ -40,6 +40,7 @@ class VecShepherdEnv:
         self.nn = np.full((B, N), self.cfg.social_dist)
         self.dog_pos = np.zeros((B, 2)); self.dog_vel = np.zeros((B, 2))
         self.t = np.zeros(B, np.int64); self.prev_d = np.zeros(B)
+        self.prev_sheep_d = np.zeros((B, N))
         self._init_envs(np.arange(B))
         obs = self._obs(); self._last_obs = obs
         self._last_state = self._privileged(obs)
@@ -65,6 +66,7 @@ class VecShepherdEnv:
         self.dog_vel[idx] = 0.0
         self.t[idx] = 0
         self.prev_d[idx] = self._flock_pen_dist()[idx]
+        self.prev_sheep_d[idx] = np.linalg.norm(self.pos[idx] - self.pen, axis=2)
 
     def privileged_state(self):
         return self._last_state
@@ -89,13 +91,16 @@ class VecShepherdEnv:
         d = np.linalg.norm(centroid - self.pen, axis=1)
         progress = self.prev_d - d
         self.prev_d = d
+        sd = np.linalg.norm(self.pos - self.pen[None, None, :], axis=2)   # (B,N)
+        fetch = (self.prev_sheep_d - sd).sum(1)                            # per-sheep potential
+        self.prev_sheep_d = sd
         dev = np.linalg.norm(self.pos - centroid[:, None, :], axis=2)
         spread = (dev * free).sum(1) / np.maximum(cntf, 1)
         mean_ar = (self.arousal * free).sum(1) / np.maximum(cntf, 1)
         mean_ar[nofree] = 0.0
 
-        reward = (c.r_pen * newly + c.r_progress * progress - c.r_spread * spread
-                  - c.r_arousal * mean_ar * c.dt - c.r_time)
+        reward = (c.r_pen * newly + c.r_progress * progress + c.r_fetch * fetch
+                  - c.r_spread * spread - c.r_arousal * mean_ar * c.dt - c.r_time)
         term = self.penned.all(1)
         reward = reward + c.r_success * term
         self.t += 1

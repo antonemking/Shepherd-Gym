@@ -93,9 +93,9 @@ def evaluate(actor, episodes=12, seed0=9000, r_arousal=0.5):
     }
 
 
-def train(total_steps, n_envs=128, horizon=256, seed=0, r_arousal=0.5):
+def train(total_steps, n_envs=128, horizon=256, seed=0, r_arousal=0.5, init=""):
     torch.manual_seed(seed); np.random.seed(seed)
-    tag = f"ra{r_arousal:g}"
+    tag = f"ra{r_arousal:g}" + ("_bc" if init else "")
     ckpt_dir = CKPT / tag
     OUT.mkdir(exist_ok=True); ckpt_dir.mkdir(parents=True, exist_ok=True)
     cfg = make_cfg(r_arousal)
@@ -107,9 +107,11 @@ def train(total_steps, n_envs=128, horizon=256, seed=0, r_arousal=0.5):
     cur_state = vec.privileged_state()
 
     actor, critic = Actor(obs_dim, act_dim), Critic(state_dim)
+    if init:
+        actor.load_state_dict(torch.load(init)); print(f"warm-started actor from {init}")
     opt = torch.optim.Adam(list(actor.parameters()) + list(critic.parameters()), lr=3e-4, eps=1e-5)
     gamma, lam, clip, epochs, mb = 0.99, 0.95, 0.2, 4, 8
-    ent_coef, vf_coef = 0.0, 0.5
+    ent_coef, vf_coef = 0.01, 0.5
 
     batch = n_envs * horizon
     n_updates = total_steps // batch
@@ -228,5 +230,6 @@ if __name__ == "__main__":
     ap.add_argument("--horizon", type=int, default=256)
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--r_arousal", type=float, default=0.5, help="welfare penalty weight (0 = pure penning)")
+    ap.add_argument("--init", default="", help="path to a pretrained actor (e.g. out/bc_actor.pt) to warm-start")
     a = ap.parse_args()
-    train(a.steps, n_envs=a.envs, horizon=a.horizon, seed=a.seed, r_arousal=a.r_arousal)
+    train(a.steps, n_envs=a.envs, horizon=a.horizon, seed=a.seed, r_arousal=a.r_arousal, init=a.init)

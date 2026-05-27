@@ -60,7 +60,7 @@ def main(seed=7, tag="ra0.5"):
         actor = Actor(probe.obs_dim, probe.action_dim); actor.load_state_dict(torch.load(p)); actor.eval()
         frames, traj, info = rollout(actor, seed, f"step {s//1000}k", rnd)
         named[f"step {s//1000}k"] = frames; trajs.append((s, traj))
-        print(f"  step {s:>7}: penned {info['penned']}/{info['n_sheep']}, arousal {info['mean_arousal']:.3f}")
+        print(f"  step {s:>7}: penned {info['penned']}/{probe.cfg.n_sheep}, arousal {info['mean_arousal']:.3f}")
 
     panel = R.compare_panel(named)
     R.save_mp4(panel, str(OUT / f"ghost_compare_{tag}.mp4")); R.save_gif(panel, str(OUT / f"ghost_compare_{tag}.gif"))

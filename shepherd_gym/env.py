@@ -67,7 +67,8 @@ class ShepherdConfig:
 
     # ---- reward weights (computed on TRUE latent arousal) ----
     r_pen: float = 1.0
-    r_progress: float = 0.6
+    r_progress: float = 0.0        # centroid progress (off — superseded by per-sheep fetch)
+    r_fetch: float = 0.15          # per-sheep potential: reward EVERY sheep's progress to the fold
     r_spread: float = 0.02
     r_arousal: float = 0.5         # WELFARE: penalise mean flock arousal (per step → integrated dose)
     r_time: float = 0.01
@@ -108,6 +109,7 @@ class ShepherdEnv:
         self.dog_vel = np.zeros(2)
         self.t = 0
         self._prev_flock_pen_dist = self._flock_pen_dist()
+        self._prev_sheep_dist = self._sheep_pen_dist()
         obs = self._obs()
         self._last_obs = obs
         return obs, {}
@@ -126,12 +128,16 @@ class ShepherdEnv:
         d = self._flock_pen_dist()
         progress = self._prev_flock_pen_dist - d
         self._prev_flock_pen_dist = d
+        sd = self._sheep_pen_dist()
+        fetch = float((self._prev_sheep_dist - sd).sum())   # per-sheep potential shaping
+        self._prev_sheep_dist = sd
         spread = self._flock_spread()
         mean_ar = float(self.arousal[~self.penned].mean()) if (~self.penned).any() else 0.0
 
         reward = (
             c.r_pen * newly
             + c.r_progress * progress
+            + c.r_fetch * fetch
             - c.r_spread * spread
             - c.r_arousal * mean_ar * c.dt      # welfare cost, on the TRUE latent
             - c.r_time
@@ -235,6 +241,9 @@ class ShepherdEnv:
 
     def _flock_pen_dist(self):
         return float(np.linalg.norm(self._flock_centroid() - self.pen))
+
+    def _sheep_pen_dist(self):
+        return np.linalg.norm(self.sheep_pos - self.pen, axis=1)
 
     def _flock_spread(self):
         free = self.sheep_pos[~self.penned]
