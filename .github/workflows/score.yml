@@ -6,15 +6,17 @@ name: Score submission
 # The core path needs only base deps (no torch); checkpoint entries need the `needs-torch`
 # label so the heavier stack is only installed when actually required.
 
+# Scoring imports and runs submitted policies (arbitrary callables / pickled
+# checkpoints) — untrusted code. So this job runs with a READ-ONLY token and never
+# touches the PR via the API; results land in the run summary. Triggers only on
+# submissions/** (editing the committed leaderboard must not re-run scoring).
 on:
   pull_request:
     paths:
       - "submissions/**"
-      - "leaderboard/**"
 
 permissions:
   contents: read
-  pull-requests: write
 
 jobs:
   score:
@@ -50,15 +52,6 @@ jobs:
           done
           cat report.md
 
-      - name: Post score as PR comment
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const fs = require('fs');
-            const body = fs.readFileSync('report.md', 'utf8');
-            await github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number,
-              body,
-            });
+      - name: Publish scores to the run summary
+        if: always()
+        run: cat report.md >> "$GITHUB_STEP_SUMMARY"

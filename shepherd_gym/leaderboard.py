@@ -69,7 +69,9 @@ def record(entry: dict) -> list[dict]:
     os.makedirs(LB_DIR, exist_ok=True)
     best = {e["author"]: e for e in load_tier(entry["tier"])}
     cur = best.get(entry["author"])
-    if cur is None or entry["score"] > cur["score"]:
+    # >= so a resubmission that ties the stored (2-dp) best still refreshes its
+    # timestamp and code_version — the latest run for a given best score wins.
+    if cur is None or entry["score"] >= cur["score"]:
         best[entry["author"]] = entry
     ranked = rank(list(best.values()))
     with open(_path(entry["tier"]), "w") as f:
