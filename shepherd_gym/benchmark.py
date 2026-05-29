@@ -18,27 +18,40 @@ from .baselines import RandomPolicy, GreedyDriver, FlankShepherd
 from . import render as R
 
 
+def rollout_episode(env, policy, seed):
+    """Roll one episode and return its summary stats. The single source of truth
+    for how an episode is scored — shared by `evaluate` and `scoring.score_tier`
+    so they can never drift apart."""
+    env.reset(seed=seed)
+    ret, ar, t = 0.0, 0.0, 0
+    for _ in range(env.cfg.max_steps):
+        _, r, term, trunc, info = env.step(policy(env))
+        ret += r
+        ar += info["mean_arousal"]
+        t += 1
+        if term or trunc:
+            break
+    return {
+        "won": bool(env.penned.all()),
+        "steps": t,
+        "return": ret,
+        "arousal": ar / max(t, 1),
+        "penned": float(env.penned.mean()),
+    }
+
+
 def evaluate(make_env, make_policy, episodes=30, seed0=1000):
     succ, steps_succ, rets, ars, penned = 0, [], [], [], []
     for k in range(episodes):
         env = make_env()
         pol = make_policy()
-        env.reset(seed=seed0 + k)
-        ret, ar, t = 0.0, 0.0, 0
-        for _ in range(env.cfg.max_steps):
-            _, r, term, trunc, info = env.step(pol(env))
-            ret += r
-            ar += info["mean_arousal"]
-            t += 1
-            if term or trunc:
-                break
-        won = bool(env.penned.all())
-        succ += won
-        if won:
-            steps_succ.append(t)
-        rets.append(ret)
-        ars.append(ar / max(t, 1))
-        penned.append(float(env.penned.mean()))
+        ep = rollout_episode(env, pol, seed0 + k)
+        succ += ep["won"]
+        if ep["won"]:
+            steps_succ.append(ep["steps"])
+        rets.append(ep["return"])
+        ars.append(ep["arousal"])
+        penned.append(ep["penned"])
     return {
         "success": succ / episodes,
         "steps_succ": float(np.mean(steps_succ)) if steps_succ else float("nan"),
