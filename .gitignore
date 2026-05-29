@@ -1,6 +1,9 @@
 # Generated demo/benchmark artifacts (regenerate with scripts/demo.py)
 /out/
 
+# Per-submission rendered artifacts (the JSON board + README are committed)
+leaderboard/runs/
+
 # Python
 __pycache__/
 *.py[cod]
