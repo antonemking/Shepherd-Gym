@@ -75,6 +75,36 @@ python scripts/demo.py 40     # benchmark the baselines + write visuals to out/
 Early result (40 held-out seeds, 8 sheep): the flank shepherd pens **80%** but drives
 mean arousal to **~0.49** — exactly the gap a gentler learned policy should close.
 
+## Compete 🏆
+
+shepherd-gym doubles as a **Kaggle-style competition**: submit a policy, get scored on
+held-out seeds, and climb a leaderboard that gets progressively harder. A policy is any
+callable `policy(env) -> action ∈ [-1,1]²` (the same contract as the baselines) **or** a
+trained actor checkpoint — scripted and learned entries compete on one board.
+
+**Score (0–100)** = `50·penning + 35·welfare + 15·speed`. Speed credit is awarded only on
+a full pen, so stalling to keep the flock calm can't win — you must pen the flock *and*
+keep it gentle (welfare = `1 − mean flock arousal`). This is the speed-vs-stress thesis,
+turned into a ranking.
+
+**Difficulty ladder** (`shepherd_gym/tiers.py`): `t0_pasture` (tutorial) → `t1_paddock`
+(baseline) → `t2_range` → `t3_skittish` → `t4_big_muster`, plus an adaptive **endless**
+mode and locked future tiers (wolves, obstacles) awaiting new env mechanics. Clear a
+tier's threshold to unlock the next.
+
+```bash
+python scripts/compete.py score  --tier t1_paddock --registry flank      # dry run
+python scripts/compete.py submit --tier t1_paddock --author you --title "gentle ppo" \
+                                 --checkpoint out/checkpoints/ra0.25_bc/actor_X.pt --render
+python scripts/compete.py leaderboard          # the board (also at leaderboard/README.md)
+python scripts/compete.py ladder  --author you # your unlocked tiers
+python scripts/compete.py endless --registry flank   # how deep can it go?
+```
+
+The committed board (`leaderboard/`) ships seeded with the scripted baselines as the bars
+to beat. PRs that add a `submissions/*.json` are auto-scored by CI. Full details:
+[`submissions/README.md`](submissions/README.md).
+
 ## Roadmap
 
 **Make the model empirical** — the calibration ladder, gated on footage:

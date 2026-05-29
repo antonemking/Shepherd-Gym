@@ -21,6 +21,10 @@ train = [
     "pufferlib>=2.0",
     "tensorboard>=2.16",
 ]
+# Test stack: `pip install -e ".[test]"` then `pytest -q`.
+test = [
+    "pytest>=8",
+]
 
 [build-system]
 requires = ["hatchling"]

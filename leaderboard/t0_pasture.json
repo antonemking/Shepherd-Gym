@@ -1,0 +1,50 @@
+[
+  {
+    "author": "baseline:flank",
+    "title": "flank expert (Str\u00f6mbom)",
+    "kind": "registry",
+    "ref": "flank",
+    "tier": "t0_pasture",
+    "score": 66.11,
+    "P": 0.9667,
+    "W": 0.3475,
+    "S": 0.3742,
+    "success": 0.9333,
+    "arousal": 0.6525,
+    "n_seeds": 30,
+    "timestamp": "2026-05-29T01:57:44+00:00",
+    "code_version": "d6090d8"
+  },
+  {
+    "author": "baseline:greedy",
+    "title": "greedy driver",
+    "kind": "registry",
+    "ref": "greedy",
+    "tier": "t0_pasture",
+    "score": 60.93,
+    "P": 0.9222,
+    "W": 0.3233,
+    "S": 0.2336,
+    "success": 0.7333,
+    "arousal": 0.6767,
+    "n_seeds": 30,
+    "timestamp": "2026-05-29T01:57:38+00:00",
+    "code_version": "d6090d8"
+  },
+  {
+    "author": "baseline:random",
+    "title": "random walk",
+    "kind": "registry",
+    "ref": "random",
+    "tier": "t0_pasture",
+    "score": 56.15,
+    "P": 0.5944,
+    "W": 0.7346,
+    "S": 0.0479,
+    "success": 0.2,
+    "arousal": 0.2654,
+    "n_seeds": 30,
+    "timestamp": "2026-05-29T01:57:31+00:00",
+    "code_version": "d6090d8"
+  }
+]
