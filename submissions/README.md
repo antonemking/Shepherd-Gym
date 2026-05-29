@@ -1,9 +1,10 @@
 # Submitting an entry
 
 Open a PR that adds a JSON file here. The `Score submission` GitHub Action scores it on
-the chosen tier and posts the result as a PR comment. To appear on the committed
-leaderboard, run `python scripts/compete.py submit ...` locally and commit the updated
-`leaderboard/<tier>.json`.
+the chosen tier and publishes the result to the workflow run summary (the Action runs
+submitted code, so it uses a read-only token and reports there rather than commenting on
+the PR). To appear on the committed leaderboard, run `python scripts/compete.py submit ...`
+locally and commit the updated `leaderboard/<tier>.json`.
 
 ## Format
 

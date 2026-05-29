@@ -167,6 +167,11 @@ def _render_result_page(tier, sub, pol):
     R.save_gif(frames, str(out / "episode.gif"))
     R.save_mp4(frames, str(out / "episode.mp4"))
 
+    # NOTE: a stochastic policy (e.g. the random baseline) carries RNG state, so the
+    # 40 overlaid runs are not independent samples. Faithful per-run independence
+    # needs the runner to reseed the policy from each run's seed — swarm_overlay
+    # doesn't expose that yet, so this overlay is only fully meaningful for
+    # deterministic policies (the heuristics, checkpoints). Tracked as a follow-up.
     img, succ = R.swarm_overlay(lambda: ShepherdEnv(tier.cfg), lambda: pol,
                                 n_runs=40, seed0=seed)
     img.save(str(out / "swarm.png"))

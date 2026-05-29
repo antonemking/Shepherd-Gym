@@ -75,34 +75,56 @@ python scripts/demo.py 40     # benchmark the baselines + write visuals to out/
 Early result (40 held-out seeds, 8 sheep): the flank shepherd pens **80%** but drives
 mean arousal to **~0.49** — exactly the gap a gentler learned policy should close.
 
-## Compete 🏆
+## 🏆 Open competition — train a sheepdog, see where you rank
 
-shepherd-gym doubles as a **Kaggle-style competition**: submit a policy, get scored on
-held-out seeds, and climb a leaderboard that gets progressively harder. A policy is any
-callable `policy(env) -> action ∈ [-1,1]²` (the same contract as the baselines) **or** a
-trained actor checkpoint — scripted and learned entries compete on one board.
+**This repo is also a competition, and it's open.** Can you herd a flock into the fold
+*and keep it calm*? Write a policy, get a score, climb a leaderboard that gets
+progressively harder. It's a hands-on way into reinforcement learning — using something
+you can actually picture: a dog, a flock, and the difference between a frantic gather and
+a patient one.
 
-**Score (0–100)** = `50·penning + 35·welfare + 15·speed`. Speed credit is awarded only on
-a full pen, so stalling to keep the flock calm can't win — you must pen the flock *and*
-keep it gentle (welfare = `1 − mean flock arousal`). This is the speed-vs-stress thesis,
-turned into a ranking.
+**You don't need to know RL to enter.** A "policy" is just a function that looks at the
+field and decides where the dog moves. Here's a complete, scorable one:
 
-**Difficulty ladder** (`shepherd_gym/tiers.py`): `t0_pasture` (tutorial) → `t1_paddock`
-(baseline) → `t2_range` → `t3_skittish` → `t4_big_muster`, plus an adaptive **endless**
-mode and locked future tiers (wolves, obstacles) awaiting new env mechanics. Clear a
-tier's threshold to unlock the next.
-
-```bash
-python scripts/compete.py score  --tier t1_paddock --registry flank      # dry run
-python scripts/compete.py submit --tier t1_paddock --author you --title "gentle ppo" \
-                                 --checkpoint out/checkpoints/ra0.25_bc/actor_X.pt --render
-python scripts/compete.py leaderboard          # the board (also at leaderboard/README.md)
-python scripts/compete.py ladder  --author you # your unlocked tiers
-python scripts/compete.py endless --registry flank   # how deep can it go?
+```python
+class MySheepdog:
+    def __call__(self, env):
+        free = env.sheep_pos[~env.penned]                 # sheep not yet penned
+        flock = free.mean(axis=0)                          # the flock's middle
+        behind = flock + _unit(flock - env.pen) * 3.0      # stand behind them...
+        return _unit(behind - env.dog_pos)                 # ...they flee toward the fold
 ```
 
-The committed board (`leaderboard/`) ships seeded with the scripted baselines as the bars
-to beat. PRs that add a `submissions/*.json` are auto-scored by CI. Full details:
+→ **[Write your first sheepdog (20-minute tutorial)](docs/tutorial.md)** — start here.
+The starter kit is in [`starter_kit/my_sheepdog.py`](starter_kit/my_sheepdog.py).
+
+```bash
+git clone https://github.com/antonemking/Shepherd-Gym && cd Shepherd-Gym
+pip install -e .                                   # base deps only — no GPU, no torch
+python scripts/compete.py score --tier t0_pasture \
+    --callable starter_kit.my_sheepdog:MySheepdog  # ← your first score
+```
+
+**How you're scored** (0–100): `50·penning + 35·welfare + 15·speed`. Welfare = how calm
+you kept the flock (`1 − mean stress`) — gentler handling scores higher. Speed only counts
+if you pen the *whole* flock, so you can't win by stalling to stay calm. That fast-vs-gentle
+tension is the research question, turned into a ranking.
+
+**The ladder gets harder as you climb:** `t0_pasture` (tutorial) → `t1_paddock` → `t2_range`
+→ `t3_skittish` → `t4_big_muster` (more sheep, bigger fields, jumpier flocks), with an
+**endless** mode on top. Clear a tier to unlock the next.
+
+**Ready to compete for real?** Already comfortable with RL? Submit a trained model — it
+competes on the same board as hand-written policies:
+
+```bash
+python scripts/compete.py submit --tier t1_paddock --author you --title "gentle ppo" \
+    --checkpoint out/checkpoints/ra0.25_bc/actor_X.pt --render   # --render saves a replay GIF
+python scripts/compete.py leaderboard      # the board (also at leaderboard/README.md)
+```
+
+Open a PR adding a small `submissions/*.json` and CI scores you automatically. The board
+ships seeded with the scripted baselines as the bars to beat. Rules:
 [`submissions/README.md`](submissions/README.md).
 
 ## Roadmap

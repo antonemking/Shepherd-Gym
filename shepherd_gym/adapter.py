@@ -54,7 +54,9 @@ def _load_checkpoint_policy(path: str, probe_env):
         sys.path.insert(0, scripts_dir)
     from train import Actor
 
-    sd = torch.load(path, map_location="cpu")
+    # weights_only=True refuses to unpickle arbitrary objects — a submitted .pt is
+    # untrusted input, and torch<2.6 still defaults this to False. We only need tensors.
+    sd = torch.load(path, map_location="cpu", weights_only=True)
     w0 = sd["net.0.weight"]
     if w0.shape[1] != probe_env.obs_dim:
         raise ValueError(
