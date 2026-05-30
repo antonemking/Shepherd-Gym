@@ -97,22 +97,27 @@ Straight from `step()` in `env.py`, every tick the dog earns:
 | `r_pen · newly` | **+1.0** per sheep | a sheep that *just* crossed into the fold |
 | `r_fetch · fetch` | **+0.15** × progress | every sheep getting closer to the fold (shaping) |
 | `−r_spread · spread` | **−0.02** × spread | letting the flock smear out |
-| `−r_arousal · mean_arousal · dt` | **−0.5** × stress × 0.1 | **welfare: the flock being stressed, every step** |
+| `−r_arousal · mean_arousal · dt` | **−0.5** × stress × dt | **welfare: the flock being stressed, every step** |
 | `−r_time` | **−0.01** | dawdling |
 | `+r_success` | **+10.0** (once) | the whole flock penned |
 
-The welfare term, `−0.5 · mean_arousal · dt`, is small *per step* — but it's charged **every
-single step**, on the **true** arousal. It's a **dose**: keep the flock at high stress for 200
-steps and it quietly outweighs a couple of penning bonuses. That's how "calm" is encoded here —
-not as a one-time check, but as an integral of suffering over the whole episode.
+The welfare term, `−0.5 · mean_arousal · dt`, is small *per step* — at full stress just `−0.05`
+(with `dt = 0.1`) — but it's charged **every single step**, on the **true** arousal, across an
+episode that runs up to `max_steps = 600`. It's a **dose**: held high, it accumulates into
+something that can dwarf a handful of `+1` penning bonuses (we pin the exact figure in §6).
+That's how "calm" is encoded here — not as a one-time check, but as an integral of suffering
+over the whole episode.
 
 ## 5. Practice problem
 
 > A student writes a dog whose only instinct is: **sprint at the flock's centre and drive it
 > into the fold as fast as possible.** On paper this looks great — it maximises `r_pen`,
 > `r_fetch`, and `r_success`, and it minimises `r_time`. Yet on the leaderboard it scores
-> *worse* than a slower, wider-working dog. **Using only the reward table above, explain why —
-> and name the specific term that punishes the sprinter.**
+> *worse* than a slower, wider-working dog. **Using the reward table above _and_ the flock
+> dynamics from §4, explain why — and name the specific term that punishes the sprinter.**
+
+(The reason it takes *both* — reward and dynamics — is itself the lesson: the failure lives in
+how R and P **interact**, not in either alone.)
 
 Try it before peeking. Three hints, each revealing a little more:
 
@@ -138,16 +143,20 @@ but it integrates. Also ask: when a tight sprint scatters the mob, what happens 
 
 ## 6. Worked solution
 
-The sprinter loses on two fronts, and the reward table predicts both.
+The sprinter loses on two fronts — and you can only see both by reading the reward table
+*through* the flock dynamics, which is the point.
 
 **Front one — the welfare dose.** Sprinting straight at the centre means the dog is
 continuously inside the flight zone (`flight_zone = 7.0`) *and* closing fast. In the arousal
 model, in-zone pressure scales with `w_pred_arousal = 1.3` and the closing-speed bonus
 `w_closing = 1.0`, and arousal **rises fast but recovers slow** (`arousal_rise = 1.6` vs
 `arousal_decay = 0.22`). So the sprinter pins `mean_arousal` near 1.0 for most of the episode.
-The welfare term `−0.5 · mean_arousal · dt` then bleeds roughly `−0.05` per step; over a
-couple hundred steps that's `−10`-ish — on the order of the entire `+10` success bonus, wiped
-out by stress alone.
+At `mean_arousal = 1.0` the welfare term is exactly `−0.5 · 1.0 · dt = −0.05` per step
+(`dt = 0.1`), and an episode here runs up to `max_steps = 600`. You don't have to estimate the
+total — I rolled the repo's `GreedyDriver` (a sprinter) and summed the welfare term over the
+episode: it lands between **−12.6 and −23.7** across seeds. In other words the integrated stress
+penalty doesn't just *approach* the `+10` success bonus — it **outweighs it**, every time. The
+gentleness you ignored costs more than the jackpot you chased.
 
 **Front two — it doesn't even pen reliably.** A hard charge at the *centre* makes the flee
 forces shove sheep **outward in all directions** — the mob splits. Stragglers that pop out of
@@ -175,11 +184,16 @@ every shortcut to the goal cost more than the honest path.
 
 **Where Markov cracks.** Remember the promise that the state is "enough"? It isn't, quite. The
 dog observes a **noisy ear angle**, not true arousal, and a single noisy frame can't tell a
-genuinely calming flock from one that just happens to look calm this instant. A dog that
-reacts to one frame can be fooled; a real solution needs to integrate over time (which is why
-serious agents here carry memory, and why the *critic* is given the true arousal during
-training). Whenever someone hands you an MDP, ask: *is the state actually sufficient, or is the
-*real* state partly hidden?* Here, it's partly hidden by design.
+genuinely calming flock from one that just happens to look calm this instant. The reward is
+charged on the true stress; the policy only ever sees a jittered shadow of it. Whenever someone
+hands you an MDP, ask: *is the state actually sufficient, or is the real state partly hidden?*
+Here, it's partly hidden **by design** — which technically makes this a POMDP (a *partially
+observed* MDP), the single most important caveat to have in your back pocket.[^hidden]
+
+[^hidden]: Two ideas this opens up, which later lessons pick up so we don't overload this one:
+    the agent can integrate the noisy signal over *time* to denoise it (memory/recurrence), and
+    at training time the *critic* can be handed the true arousal even though the actor can't see
+    it (asymmetric actor-critic). Park them here; we'll come back.
 
 ## 8. Visual to build — annotated state frame
 
